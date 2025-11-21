@@ -1,0 +1,9 @@
+Purchase Order
+PO Number: PO-20251121-4062058b
+Vendor: Unknown Vendor
+Currency: USD
+Total Amount: 0
+Items:
+- hp x20 @ 5000000.00
+- lenovo x20 @ 3000000.00
+- del x10 @ 2000000.00

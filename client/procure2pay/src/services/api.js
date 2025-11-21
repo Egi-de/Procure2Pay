@@ -47,8 +47,12 @@ const buildFormData = (payload) => {
   const formData = new FormData();
   Object.entries(payload).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
-    if (key === "items") {
-      formData.append("items", JSON.stringify(value));
+    if (key === "items" && Array.isArray(value)) {
+      value.forEach((item, i) => {
+        Object.entries(item).forEach(([field, val]) => {
+          formData.append(`items[${i}][${field}]`, val);
+        });
+      });
     } else {
       formData.append(key, value);
     }
@@ -63,8 +67,7 @@ export const RequestAPI = {
     }),
   detail: (id) => api.get(`requests/${id}/`),
   create: (payload) => api.post("requests/", buildFormData(payload)),
-  update: (id, payload) =>
-    api.put(`requests/${id}/`, buildFormData(payload)),
+  update: (id, payload) => api.put(`requests/${id}/`, buildFormData(payload)),
   approve: (id, data) => api.patch(`requests/${id}/approve/`, data),
   reject: (id, data) => api.patch(`requests/${id}/reject/`, data),
   submitReceipt: (id, file) => {
@@ -75,4 +78,3 @@ export const RequestAPI = {
 };
 
 export default api;
-

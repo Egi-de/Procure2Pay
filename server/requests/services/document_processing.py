@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -12,6 +13,8 @@ from PIL import Image
 from PyPDF2 import PdfReader
 import pytesseract
 
+logger = logging.getLogger(__name__)
+
 
 def _extract_text(uploaded_file) -> str:
     if not uploaded_file:
@@ -20,16 +23,21 @@ def _extract_text(uploaded_file) -> str:
     data = uploaded_file.read()
     uploaded_file.seek(0)
     if uploaded_file.name.lower().endswith(".pdf"):
-        pdf_reader = PdfReader(io.BytesIO(data))
-        text_chunks = []
-        for page in pdf_reader.pages:
-            page_text = page.extract_text() or ""
-            text_chunks.append(page_text)
-        return "\n".join(text_chunks)
+        try:
+            pdf_reader = PdfReader(io.BytesIO(data))
+            text_chunks = []
+            for page in pdf_reader.pages:
+                page_text = page.extract_text() or ""
+                text_chunks.append(page_text)
+            return "\n".join(text_chunks)
+        except Exception as e:
+            logger.error(f"PDF extraction failed for {uploaded_file.name}: {e}")
+            return ""
     try:
         image = Image.open(io.BytesIO(data))
         return pytesseract.image_to_string(image)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Image extraction failed for {uploaded_file.name}: {e}")
         return ""
 
 
@@ -52,7 +60,11 @@ def _extract_number_from_text(pattern: str, text: str) -> Decimal | None:
 
 
 def extract_proforma_metadata(uploaded_file) -> dict[str, Any]:
-    text = _extract_text(uploaded_file)
+    try:
+        text = _extract_text(uploaded_file)
+    except Exception as e:
+        logger.error(f"Proforma metadata extraction failed: {e}")
+        text = ""
     vendor_match = re.search(r"Vendor[:\-]\s*(.*)", text, re.IGNORECASE)
     currency_match = re.search(r"Currency[:\-]\s*([A-Z]{3})", text, re.IGNORECASE)
     total = _extract_number_from_text(r"Total[:\-]?\s*([$€£]?)(\d+(\.\d{1,2})?)", text)
@@ -63,6 +75,7 @@ def extract_proforma_metadata(uploaded_file) -> dict[str, Any]:
         "extracted_on": timezone.now().isoformat(),
         "source": "proforma",
         "raw_excerpt": text[:500],
+        "extraction_error": text == "" and uploaded_file is not None,
     }
     return metadata
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -78,13 +79,59 @@ class PurchaseRequestWriteSerializer(serializers.ModelSerializer):
     items = RequestItemSerializer(many=True, allow_empty=False)
 
     def to_internal_value(self, data):
-        mutable_data = data.copy()
+        print("Received data in to_internal_value:", dict(data))  # Debug print
+        # Build clean mutable_data with flattened scalars and files
+        mutable_data = {}
+        for key, value in data.items():
+            if key == 'proforma':
+                mutable_data[key] = value[0] if isinstance(value, list) and value else value
+            elif key.startswith('items['):
+                # Skip nested keys for now
+                continue
+            else:
+                mutable_data[key] = value[0] if isinstance(value, list) and value else value
+
         items_value = mutable_data.get("items")
+
+        # Handle flat nested keys like items[0][description]
+        if not items_value or not isinstance(items_value, (list, str)):
+            items_dict = {}
+            for key in data:
+                if key.startswith('items['):
+                    match = re.match(r'items\[(\d+)\]\[(\w+)\]', key)
+                    if match:
+                        idx = int(match.group(1))
+                        field = match.group(2)
+                        if idx not in items_dict:
+                            items_dict[idx] = {}
+                        items_dict[idx][field] = data[key][0] if isinstance(data[key], list) else data[key]
+            items_list = [items_dict[i] for i in sorted(items_dict)]
+            print("Reconstructed items_list:", items_list)  # Debug print
+            # Convert types for items
+            from decimal import Decimal
+            for item in items_list:
+                if 'quantity' in item:
+                    item['quantity'] = int(item['quantity'])
+                if 'unit_price' in item:
+                    item['unit_price'] = Decimal(item['unit_price'])
+            if items_list and all(isinstance(item, dict) and len(item) > 0 for item in items_list):
+                mutable_data["items"] = items_list
+            else:
+                raise serializers.ValidationError({"items": "Invalid items structure."})
+
         if isinstance(items_value, str):
             try:
                 mutable_data["items"] = json.loads(items_value)
             except json.JSONDecodeError as exc:
                 raise serializers.ValidationError({"items": "Invalid JSON payload"}) from exc
+
+        # Convert amount to Decimal if present
+        if 'amount' in mutable_data:
+            from decimal import Decimal
+            mutable_data['amount'] = Decimal(mutable_data['amount'])
+
+        print("Final mutable_data['items']:", mutable_data.get("items"))  # Debug print
+        print("Final mutable_data:", mutable_data)  # Additional debug
         return super().to_internal_value(mutable_data)
 
     class Meta:

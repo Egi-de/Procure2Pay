@@ -17,6 +17,43 @@ const CreateRequest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  const validateForm = () => {
+    const errors = [];
+
+    if (!form.title.trim()) {
+      errors.push("Title is required.");
+    }
+
+    if (!form.description.trim()) {
+      errors.push("Description is required.");
+    }
+
+    const amountNum = parseFloat(form.amount);
+    if (!form.amount || isNaN(amountNum) || amountNum <= 0) {
+      errors.push("Amount must be a positive number.");
+    }
+
+    if (form.items.length === 0) {
+      errors.push("At least one item is required.");
+    } else {
+      form.items.forEach((item, index) => {
+        if (!item.description.trim()) {
+          errors.push(`Item ${index + 1} description is required.`);
+        }
+        const qtyNum = parseInt(item.quantity);
+        if (isNaN(qtyNum) || qtyNum < 1) {
+          errors.push(`Item ${index + 1} quantity must be at least 1.`);
+        }
+        const priceNum = parseFloat(item.unit_price);
+        if (isNaN(priceNum) || priceNum <= 0) {
+          errors.push(`Item ${index + 1} unit price must be positive.`);
+        }
+      });
+    }
+
+    return errors;
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -47,6 +84,11 @@ const CreateRequest = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const errors = validateForm();
+    if (errors.length > 0) {
+      setError(errors);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -63,7 +105,49 @@ const CreateRequest = () => {
       });
       navigate("/");
     } catch (err) {
-      setError(err.response?.data || { detail: "Unable to create request" });
+      let errorMsg = err.response?.data;
+      if (errorMsg && typeof errorMsg === "object") {
+        // Recursively flatten nested DRF errors to string array
+        const flattenErrors = (obj, path = "") => {
+          const errors = [];
+          if (Array.isArray(obj)) {
+            obj.forEach((item, idx) => {
+              if (typeof item === "string") {
+                errors.push(item);
+              } else if (typeof item === "object") {
+                Object.entries(item).forEach(([key, val]) => {
+                  const newPath = path ? `${path}[${idx}].${key}` : `${key}`;
+                  if (Array.isArray(val)) {
+                    val.forEach((msg) => errors.push(`${newPath}: ${msg}`));
+                  } else if (typeof val === "object") {
+                    errors.push(...flattenErrors(val, newPath));
+                  }
+                });
+              }
+            });
+          } else {
+            Object.entries(obj).forEach(([key, val]) => {
+              const newPath = path ? `${path}.${key}` : key;
+              if (Array.isArray(val)) {
+                val.forEach((msg) => errors.push(`${newPath}: ${msg}`));
+              } else if (typeof val === "object") {
+                errors.push(...flattenErrors(val, newPath));
+              } else if (typeof val === "string") {
+                errors.push(`${newPath}: ${val}`);
+              }
+            });
+          }
+          return errors;
+        };
+        const flatErrors = flattenErrors(errorMsg);
+        errorMsg =
+          flatErrors.length > 0
+            ? flatErrors
+            : { detail: "Unable to create request" };
+      } else {
+        errorMsg = errorMsg || { detail: "Unable to create request" };
+      }
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -81,15 +165,25 @@ const CreateRequest = () => {
       </div>
       {error && (
         <div className="p-3 rounded-md bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-100 text-sm">
-          {error.detail || "Please review the fields highlighted below."}
+          {Array.isArray(error) ? (
+            <ul className="list-disc list-inside space-y-1">
+              {error.map((msg, idx) => (
+                <li key={idx}>{msg}</li>
+              ))}
+            </ul>
+          ) : error.detail ? (
+            error.detail
+          ) : (
+            "Please review the fields highlighted below."
+          )}
         </div>
       )}
       <form
         className="space-y-6 bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm backdrop-blur"
         onSubmit={handleSubmit}
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <label className="space-x-2">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
               Title
             </span>
@@ -101,7 +195,7 @@ const CreateRequest = () => {
               placeholder="Laptop purchase"
             />
           </label>
-          <label className="space-y-1">
+          <label className="space-x-2">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
               Amount
             </span>
@@ -115,7 +209,7 @@ const CreateRequest = () => {
             />
           </label>
         </div>
-        <label className="space-y-1 block">
+        <label className="space-y-4 block">
           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
             Description
           </span>
@@ -152,8 +246,8 @@ const CreateRequest = () => {
                 }
                 required
               />
-              <input
-                className="sm:col-span-3 border border-slate-200 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+              <Input
+                className="sm:col-span-3"
                 type="number"
                 min="1"
                 placeholder="Qty"
@@ -176,6 +270,7 @@ const CreateRequest = () => {
               />
               {form.items.length > 1 && (
                 <Button
+                  className="sm:col-span-12"
                   type="button"
                   onClick={() => removeItem(index)}
                   variant="danger"
