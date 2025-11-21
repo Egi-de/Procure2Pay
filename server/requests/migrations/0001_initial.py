@@ -1,0 +1,82 @@
+import django.core.validators
+import django.db.models.deletion
+import django.utils.timezone
+import uuid
+from django.db import migrations, models
+from django.conf import settings
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+        ('home', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='PurchaseRequest',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('title', models.CharField(max_length=255)),
+                ('description', models.TextField(blank=True)),
+                ('amount', models.DecimalField(decimal_places=2, max_digits=12, validators=[django.core.validators.MinValueValidator(0)])),
+                ('status', models.CharField(choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING', max_length=16)),
+                ('current_approval_level', models.PositiveSmallIntegerField(default=1)),
+                ('required_approval_levels', models.PositiveSmallIntegerField(default=2)),
+                ('proforma', models.FileField(blank=True, null=True, upload_to='proformas/')),
+                ('purchase_order', models.FileField(blank=True, null=True, upload_to='purchase_orders/')),
+                ('receipt', models.FileField(blank=True, null=True, upload_to='receipts/')),
+                ('proforma_metadata', models.JSONField(blank=True, default=dict)),
+                ('purchase_order_metadata', models.JSONField(blank=True, default=dict)),
+                ('receipt_validation', models.JSONField(blank=True, default=dict)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('approved_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='approved_requests', to=settings.AUTH_USER_MODEL)),
+                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='created_requests', to=settings.AUTH_USER_MODEL)),
+            ],
+            options={
+                'ordering': ['-created_at'],
+            },
+        ),
+        migrations.CreateModel(
+            name='ReceiptValidationResult',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('is_valid', models.BooleanField(default=False)),
+                ('mismatches', models.JSONField(blank=True, default=dict)),
+                ('validated_at', models.DateTimeField(auto_now_add=True)),
+                ('request', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='validation_result', to='requests.purchaserequest')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='RequestItem',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('description', models.CharField(max_length=255)),
+                ('quantity', models.PositiveIntegerField(default=1, validators=[django.core.validators.MinValueValidator(1)])),
+                ('unit_price', models.DecimalField(decimal_places=2, max_digits=12, validators=[django.core.validators.MinValueValidator(0)])),
+                ('request', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='requests.purchaserequest')),
+            ],
+            options={
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
+            name='ApprovalStep',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('level', models.PositiveSmallIntegerField()),
+                ('decision', models.CharField(choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING', max_length=16)),
+                ('decided_at', models.DateTimeField(blank=True, null=True)),
+                ('metadata', models.JSONField(blank=True, default=dict)),
+                ('approver', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='approval_steps', to=settings.AUTH_USER_MODEL)),
+                ('request', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='approvals', to='requests.purchaserequest')),
+            ],
+            options={
+                'ordering': ['level'],
+                'unique_together': {('request', 'level')},
+            },
+        ),
+    ]

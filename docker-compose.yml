@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: procure2pay
+      POSTGRES_USER: p2p
+      POSTGRES_PASSWORD: supersecret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./server
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DJANGO_SECRET_KEY: super-secret-key
+      DEBUG: "false"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: procure2pay
+      DB_USER: p2p
+      DB_PASSWORD: supersecret
+      DB_HOST: db
+      DB_PORT: 5432
+      ALLOWED_HOSTS: "*"
+      CORS_ALLOWED_ORIGINS: "http://localhost:4173"
+    volumes:
+      - ./server/media:/app/media
+      - ./server/staticfiles:/app/staticfiles
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./client/procure2pay
+      args:
+        - VITE_API_BASE_URL=http://localhost:8000
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    ports:
+      - "4173:80"
+
+volumes:
+  postgres_data:
+
