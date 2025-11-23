@@ -34,6 +34,7 @@ jobs:
       - name: Run migrations
         run: |
           cd server
+          mkdir -p logs
           python manage.py migrate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
