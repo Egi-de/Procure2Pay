@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -78,15 +79,42 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
 class PurchaseRequestWriteSerializer(serializers.ModelSerializer):
     items = RequestItemSerializer(many=True, allow_empty=False)
 
+    def _parse_items_from_form(self, data):
+        """Helper to parse flat nested keys like items[0][description] into a list of dicts."""
+        items_dict = {}
+        for key in data:
+            if key.startswith('items['):
+                match = re.match(r'items\[(\d+)\]\[(\w+)\]', key)
+                if not match:
+                    raise serializers.ValidationError({"items": f"Invalid item key format: {key}"})
+                idx = int(match.group(1))
+                field = match.group(2)
+                if idx not in items_dict:
+                    items_dict[idx] = {}
+                value = data[key][0] if isinstance(data[key], list) else data[key]
+                items_dict[idx][field] = value
+        if not items_dict:
+            raise serializers.ValidationError({"items": "No valid items found in form data."})
+        items_list = [items_dict[i] for i in sorted(items_dict)]
+        # Validate and convert types
+        for item in items_list:
+            if not all(k in item for k in ['description', 'quantity', 'unit_price']):
+                raise serializers.ValidationError({"items": "Each item must have description, quantity, and unit_price."})
+            try:
+                item['quantity'] = int(item['quantity'])
+                item['unit_price'] = Decimal(item['unit_price'])
+            except (ValueError, TypeError):
+                raise serializers.ValidationError({"items": "Invalid quantity or unit_price type."})
+        return items_list
+
     def to_internal_value(self, data):
-        print("Received data in to_internal_value:", dict(data))  # Debug print
         # Build clean mutable_data with flattened scalars and files
         mutable_data = {}
         for key, value in data.items():
             if key == 'proforma':
                 mutable_data[key] = value[0] if isinstance(value, list) and value else value
             elif key.startswith('items['):
-                # Skip nested keys for now
+                # Skip nested keys, handled separately
                 continue
             else:
                 mutable_data[key] = value[0] if isinstance(value, list) and value else value
@@ -95,29 +123,7 @@ class PurchaseRequestWriteSerializer(serializers.ModelSerializer):
 
         # Handle flat nested keys like items[0][description]
         if not items_value or not isinstance(items_value, (list, str)):
-            items_dict = {}
-            for key in data:
-                if key.startswith('items['):
-                    match = re.match(r'items\[(\d+)\]\[(\w+)\]', key)
-                    if match:
-                        idx = int(match.group(1))
-                        field = match.group(2)
-                        if idx not in items_dict:
-                            items_dict[idx] = {}
-                        items_dict[idx][field] = data[key][0] if isinstance(data[key], list) else data[key]
-            items_list = [items_dict[i] for i in sorted(items_dict)]
-            print("Reconstructed items_list:", items_list)  # Debug print
-            # Convert types for items
-            from decimal import Decimal
-            for item in items_list:
-                if 'quantity' in item:
-                    item['quantity'] = int(item['quantity'])
-                if 'unit_price' in item:
-                    item['unit_price'] = Decimal(item['unit_price'])
-            if items_list and all(isinstance(item, dict) and len(item) > 0 for item in items_list):
-                mutable_data["items"] = items_list
-            else:
-                raise serializers.ValidationError({"items": "Invalid items structure."})
+            mutable_data["items"] = self._parse_items_from_form(data)
 
         if isinstance(items_value, str):
             try:
@@ -127,11 +133,8 @@ class PurchaseRequestWriteSerializer(serializers.ModelSerializer):
 
         # Convert amount to Decimal if present
         if 'amount' in mutable_data:
-            from decimal import Decimal
             mutable_data['amount'] = Decimal(mutable_data['amount'])
 
-        print("Final mutable_data['items']:", mutable_data.get("items"))  # Debug print
-        print("Final mutable_data:", mutable_data)  # Additional debug
         return super().to_internal_value(mutable_data)
 
     class Meta:
@@ -208,6 +211,9 @@ class ReceiptUploadSerializer(serializers.Serializer):
     def validate_receipt(self, value):
         if not value.name.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
             raise serializers.ValidationError("Supported receipt formats: pdf, png, jpg.")
+        # Sanitize filename
+        import re
+        value.name = re.sub(r'[^\w\.-]', '_', value.name)
         return value
 
     def save(self, **kwargs):

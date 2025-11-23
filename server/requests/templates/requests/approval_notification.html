@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Purchase Request Approved</title>
+  </head>
+  <body>
+    <h1>Purchase Request Approved</h1>
+    <p>Dear {{ request.created_by.username }},</p>
+    <p>
+      Your purchase request "<strong>{{ request.title }}</strong>" has been
+      approved by {{ approver.username }}.
+    </p>
+    {% if request.status == 'APPROVED' %}
+    <p>The request is fully approved. Proceed with procurement.</p>
+    {% else %}
+    <p>Next approval level is pending.</p>
+    {% endif %}
+    <p>Status: {{ request.status }}</p>
+    <p>Thank you,</p>
+    <p>Procure2Pay System</p>
+  </body>
+</html>

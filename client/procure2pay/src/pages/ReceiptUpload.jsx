@@ -52,6 +52,11 @@ const ReceiptUpload = () => {
           onChange={(event) => setFile(event.target.files[0])}
           className="w-full border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 file:bg-slate-100 dark:file:bg-slate-700 file:border-0"
         />
+        {submitting && (
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+            <div className="bg-slate-900 dark:bg-slate-100 h-2 rounded-full"></div>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <button
             type="submit"

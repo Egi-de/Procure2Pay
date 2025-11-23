@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
       await AuthAPI.me().then((response) => setUser(response.data));
     } catch (err) {
       setUser(null);
+      console.error("Bootstrap error:", err);
     } finally {
       setLoading(false);
     }
@@ -55,12 +56,13 @@ export const AuthProvider = ({ children }) => {
       logout,
       setError,
     }),
-    [user, loading, error]
+    [user, loading, error, login, logout, setError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+/* eslint-disable-next-line react-refresh/only-export-components */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -68,4 +70,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

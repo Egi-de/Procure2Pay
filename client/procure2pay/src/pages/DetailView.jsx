@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { RequestAPI } from "../services/api.js";
@@ -22,7 +22,7 @@ const DetailView = () => {
   const isApprover = user?.role?.startsWith("APPROVER");
   const isStaff = user?.role === "STAFF";
 
-  const loadRequest = async () => {
+  const loadRequest = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -33,11 +33,11 @@ const DetailView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     loadRequest();
-  }, [id]);
+  }, [loadRequest]);
 
   const handleDecision = async (action) => {
     try {

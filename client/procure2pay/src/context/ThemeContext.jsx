@@ -52,10 +52,11 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
-export const useTheme = () => {
+/* eslint-disable-next-line react-refresh/only-export-components */
+export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
+  if (context === undefined || context === null) {
     throw new Error("useTheme must be used within ThemeProvider");
   }
   return context;
-};
+}

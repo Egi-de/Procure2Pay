@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { RequestAPI } from "../services/api.js";
 import Button from "../components/Button";
+import { toast } from "react-toastify";
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -34,7 +35,7 @@ const Dashboard = () => {
   const isStaff = user?.role === "STAFF";
   const isApprover = user?.role?.startsWith("APPROVER");
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -46,14 +47,15 @@ const Dashboard = () => {
       setRequests(data.results ?? data);
     } catch (err) {
       setError(err.response?.data?.detail || "Unable to load requests");
+      console.error("Load requests error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.role, isApprover]);
 
   useEffect(() => {
     loadRequests();
-  }, [user?.role]);
+  }, [loadRequests]);
 
   const summary = useMemo(() => {
     const base = {
@@ -78,12 +80,14 @@ const Dashboard = () => {
     try {
       if (action === "approve") {
         await RequestAPI.approve(id, { comment });
+        toast.success("Request approved successfully");
       } else {
         await RequestAPI.reject(id, { comment });
+        toast.success("Request rejected successfully");
       }
       await loadRequests();
     } catch (err) {
-      alert(err.response?.data?.detail || "Unable to update request");
+      toast.error(err.response?.data?.detail || "Unable to update request");
     }
   };
 

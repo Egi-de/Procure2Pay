@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Purchase Request Rejected</title>
+  </head>
+  <body>
+    <h1>Purchase Request Rejected</h1>
+    <p>Dear {{ request.created_by.username }},</p>
+    <p>
+      Your purchase request "<strong>{{ request.title }}</strong>" has been
+      rejected by {{ approver.username }}.
+    </p>
+    <p>Reason: {{ reason|default:"No reason provided" }}</p>
+    <p>Status: {{ request.status }}</p>
+    <p>You may update and resubmit the request if needed.</p>
+    <p>Thank you,</p>
+    <p>Procure2Pay System</p>
+  </body>
+</html>

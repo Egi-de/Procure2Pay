@@ -70,11 +70,19 @@ export const RequestAPI = {
   update: (id, payload) => api.put(`requests/${id}/`, buildFormData(payload)),
   approve: (id, data) => api.patch(`requests/${id}/approve/`, data),
   reject: (id, data) => api.patch(`requests/${id}/reject/`, data),
-  submitReceipt: (id, file) => {
+  submitReceipt: (id, file, onProgress) => {
     const formData = new FormData();
     formData.append("receipt", file);
-    return api.post(`requests/${id}/submit-receipt/`, formData);
+    return api.post(`requests/${id}/submit-receipt/`, formData, {
+      onUploadProgress: onProgress,
+    });
   },
 };
+
+// Add error logging for API calls
+api.interceptors.request.use((config) => {
+  console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+  return config;
+});
 
 export default api;

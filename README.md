@@ -67,16 +67,16 @@ Update the compose file/environment to point `VITE_API_BASE_URL` and `ALLOWED_HO
 
 ## API Reference (excerpt)
 
-| Endpoint | Method | Role | Description |
-| --- | --- | --- | --- |
-| `/api/token/` | POST | Any | Obtain JWT pair |
-| `/api/token/refresh/` | POST | Authenticated | Refresh token |
-| `/api/me/` | GET | Authenticated | Current user profile |
-| `/api/requests/` | POST | Staff | Create request (multipart with `items` JSON + `proforma`) |
-| `/api/requests/` | GET | Authenticated | List requests (auto-filtered by role) |
-| `/api/requests/{id}/approve/` | PATCH | Approvers | Approve current level |
-| `/api/requests/{id}/reject/` | PATCH | Approvers | Reject |
-| `/api/requests/{id}/submit-receipt/` | POST | Staff owner | Upload receipt for validation |
+| Endpoint                             | Method | Role          | Description                                               |
+| ------------------------------------ | ------ | ------------- | --------------------------------------------------------- |
+| `/api/token/`                        | POST   | Any           | Obtain JWT pair                                           |
+| `/api/token/refresh/`                | POST   | Authenticated | Refresh token                                             |
+| `/api/me/`                           | GET    | Authenticated | Current user profile                                      |
+| `/api/requests/`                     | POST   | Staff         | Create request (multipart with `items` JSON + `proforma`) |
+| `/api/requests/`                     | GET    | Authenticated | List requests (auto-filtered by role)                     |
+| `/api/requests/{id}/approve/`        | PATCH  | Approvers     | Approve current level                                     |
+| `/api/requests/{id}/reject/`         | PATCH  | Approvers     | Reject                                                    |
+| `/api/requests/{id}/submit-receipt/` | POST   | Staff owner   | Upload receipt for validation                             |
 
 More endpoints plus schema are browsable on `/api/docs/` and `/api/redoc/`.
 
@@ -85,6 +85,10 @@ More endpoints plus schema are browsable on `/api/docs/` and `/api/redoc/`.
 - `extract_proforma_metadata`: extracts vendor/amount/currency from uploaded PDF/image
 - `generate_purchase_order`: builds PO metadata + persists a signed text artifact
 - `validate_receipt`: runs OCR / PDF parsing on receipts and compares against PO metadata
+
+### API Documentation
+
+Export Postman collection from Swagger UI at `/api/docs/` for easy testing and integration.
 
 ## Deployment
 
@@ -109,4 +113,3 @@ Manual QA checklist:
 - Confirm finance sees all records, staff restricted to their own
 
 Additional automated tests can be added under `server/requests/tests.py` (pytest or Django TestCase) focusing on workflow transitions and permissions.
-

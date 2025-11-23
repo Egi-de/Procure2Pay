@@ -89,6 +89,16 @@ class PurchaseRequest(models.Model):
         else:
             self.current_approval_level += 1
         self.save(update_fields=["current_approval_level", "status", "approved_by", "updated_at"])
+        # Send email notification
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+
+        subject = f"Purchase Request Approved - {self.title}"
+        html_message = render_to_string('requests/approval_notification.html', {
+            'request': self,
+            'approver': approver,
+        })
+        send_mail(subject, '', None, [self.created_by.email], html_message=html_message)
 
     @transaction.atomic
     def mark_rejected(self, approver, reason: str = "") -> None:
@@ -107,6 +117,17 @@ class PurchaseRequest(models.Model):
         self.status = self.Status.REJECTED
         self.approved_by = approver
         self.save(update_fields=["status", "approved_by", "updated_at"])
+        # Send email notification
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+
+        subject = f"Purchase Request Rejected - {self.title}"
+        html_message = render_to_string('requests/rejection_notification.html', {
+            'request': self,
+            'approver': approver,
+            'reason': reason,
+        })
+        send_mail(subject, '', None, [self.created_by.email], html_message=html_message)
 
 
 class RequestItem(models.Model):
