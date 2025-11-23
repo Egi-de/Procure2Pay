@@ -35,6 +35,28 @@ api.interceptors.response.use(
         }
       }
     }
+    // Enhanced error handling
+    if (error.response) {
+      // Server responded with error status
+      const { status, data } = error.response;
+      if (status >= 500) {
+        error.userMessage = "Server error. Please try again later.";
+      } else if (status === 404) {
+        error.userMessage = "Resource not found.";
+      } else if (status === 403) {
+        error.userMessage = "You don't have permission to perform this action.";
+      } else if (status === 400) {
+        error.userMessage = data.detail || "Invalid request data.";
+      } else {
+        error.userMessage = data.detail || "An error occurred.";
+      }
+    } else if (error.request) {
+      // Network error
+      error.userMessage = "Network error. Please check your connection.";
+    } else {
+      // Other error
+      error.userMessage = "An unexpected error occurred.";
+    }
     return Promise.reject(error);
   }
 );

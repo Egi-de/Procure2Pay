@@ -117,19 +117,22 @@ class PurchaseRequestWriteSerializer(serializers.ModelSerializer):
                 # Skip nested keys, handled separately
                 continue
             else:
-                mutable_data[key] = value[0] if isinstance(value, list) and value else value
+                if key == 'items':
+                    mutable_data[key] = value  # Keep as is for JSON lists or strings
+                else:
+                    mutable_data[key] = value[0] if isinstance(value, list) and value else value
 
         items_value = mutable_data.get("items")
 
         # Handle flat nested keys like items[0][description]
-        if not items_value or not isinstance(items_value, (list, str)):
+        if not items_value:
             mutable_data["items"] = self._parse_items_from_form(data)
-
-        if isinstance(items_value, str):
+        elif isinstance(items_value, str):
             try:
                 mutable_data["items"] = json.loads(items_value)
             except json.JSONDecodeError as exc:
                 raise serializers.ValidationError({"items": "Invalid JSON payload"}) from exc
+        # If list, already good
 
         # Convert amount to Decimal if present
         if 'amount' in mutable_data:

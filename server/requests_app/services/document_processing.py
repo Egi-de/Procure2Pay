@@ -17,7 +17,7 @@ import openai
 import pytesseract
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from docx import Document
+from docx import Document  # type: ignore
 
 logger = logging.getLogger(__name__)
 

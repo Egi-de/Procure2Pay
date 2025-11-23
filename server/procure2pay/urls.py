@@ -37,8 +37,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("api/", include("home.urls")),
-    path("api/", include("requests_app.urls")),
+    path("api/v1/", include("home.urls")),
+    path("api/v1/", include("requests_app.urls")),
     path(
         "api/docs/",
         schema_view.with_ui("swagger", cache_timeout=0),
