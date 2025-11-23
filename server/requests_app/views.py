@@ -1,7 +1,10 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.db import transaction
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -131,6 +134,11 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
+
+            # Send notification to finance team
+            from .notifications import send_receipt_submitted_notification
+            send_receipt_submitted_notification(purchase_request, request.user)
+
             output = PurchaseRequestDetailSerializer(
                 purchase_request, context=self.get_serializer_context()
             )
@@ -139,5 +147,3 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Error submitting receipt for request {pk}: {e}")
             raise
-
-
