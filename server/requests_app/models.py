@@ -89,17 +89,37 @@ class PurchaseRequest(models.Model):
         else:
             self.current_approval_level += 1
         self.save(update_fields=["current_approval_level", "status", "approved_by", "updated_at"])
-        # Send email notification
-        from django.core.mail import send_mail
-        from django.template.loader import render_to_string
+        
+        # Send email notification (FIXED VERSION)
+        if self.created_by.email:
+            from django.core.mail import send_mail
+            
+            subject = f"Purchase Request Approved - {self.title}"
+            message = f"""
+Dear {self.created_by.username},
 
-        subject = f"Purchase Request Approved - {self.title}"
-        html_message = render_to_string('requests/approval_notification.html', {
-            'request': self,
-            'approver': approver,
-        })
-        send_mail(subject, '', None, [self.created_by.email], html_message=html_message)
+Your purchase request "{self.title}" has been approved by {approver.username}.
 
+Status: {self.status}
+Current Level: {self.current_approval_level}/{self.required_approval_levels}
+
+Thank you,
+Procure2Pay System
+            """
+            
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    None,  # Use DEFAULT_FROM_EMAIL from settings
+                    [self.created_by.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send approval email: {e}")
+            
     @transaction.atomic
     def mark_rejected(self, approver, reason: str = "") -> None:
         if self.is_terminal:
@@ -117,17 +137,38 @@ class PurchaseRequest(models.Model):
         self.status = self.Status.REJECTED
         self.approved_by = approver
         self.save(update_fields=["status", "approved_by", "updated_at"])
-        # Send email notification
-        from django.core.mail import send_mail
-        from django.template.loader import render_to_string
+        
+        # Send email notification (FIXED VERSION)
+        if self.created_by.email:
+            from django.core.mail import send_mail
+            
+            subject = f"Purchase Request Rejected - {self.title}"
+            message = f"""
+Dear {self.created_by.username},
 
-        subject = f"Purchase Request Rejected - {self.title}"
-        html_message = render_to_string('requests/rejection_notification.html', {
-            'request': self,
-            'approver': approver,
-            'reason': reason,
-        })
-        send_mail(subject, '', None, [self.created_by.email], html_message=html_message)
+Your purchase request "{self.title}" has been rejected by {approver.username}.
+
+Reason: {reason or "No reason provided"}
+Status: {self.status}
+
+You may update and resubmit the request if needed.
+
+Thank you,
+Procure2Pay System
+            """
+            
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    None,
+                    [self.created_by.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send rejection email: {e}")
 
 
 class RequestItem(models.Model):
@@ -145,6 +186,10 @@ class RequestItem(models.Model):
 
     def __str__(self):
         return f"{self.description} x{self.quantity}"
+    
+    @property
+    def total_price(self):
+        return self.quantity * self.unit_price
 
 
 class ApprovalStep(models.Model):

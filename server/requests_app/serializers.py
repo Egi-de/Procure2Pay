@@ -248,4 +248,3 @@ class PurchaseRequestDetailSerializer(PurchaseRequestSerializer):
                 "validated_at": obj.validation_result.validated_at,
             }
         return None
-
