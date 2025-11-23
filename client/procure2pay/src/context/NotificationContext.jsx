@@ -7,6 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { RequestAPI } from "../services/api"; // Assuming notifications come via API, or extend for notifications
+import { useAuth } from "./AuthContext";
 import Toast from "../components/Toast";
 
 const NotificationContext = createContext();
@@ -27,6 +28,8 @@ export const NotificationProvider = ({ children }) => {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("info");
 
+  const { user, loading } = useAuth();
+
   const fetchNotifications = useCallback(async () => {
     try {
       // Assuming an API endpoint for notifications; adjust as needed
@@ -40,18 +43,28 @@ export const NotificationProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
-      setToastMessage("Failed to load notifications");
-      setToastType("error");
-      setShowToast(true);
+      setNotifications([]);
     }
   }, []);
 
+  // Clear notifications when user is not authenticated
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+    }
+  }, [user]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Fetch and poll notifications when authenticated
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (loading || !user) return;
+
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
     return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  }, [user, loading, fetchNotifications]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const addNotification = (message, type = "info") => {

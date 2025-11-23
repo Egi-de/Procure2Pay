@@ -23,6 +23,8 @@ from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from home.views import CurrentUserView
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Procure2Pay API",
@@ -37,6 +39,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/me/", CurrentUserView.as_view(), name="current-user"),
     path("api/v1/", include("home.urls")),
     path("api/v1/", include("requests_app.urls")),
     path(
