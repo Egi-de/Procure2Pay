@@ -29,6 +29,7 @@ api.interceptors.response.use(
           error.config.headers.Authorization = `Bearer ${data.access}`;
           return api.request(error.config);
         } catch (refreshError) {
+          console.error("Refresh token error:", refreshError);
           localStorage.removeItem("p2p_access_token");
           localStorage.removeItem("p2p_refresh_token");
         }

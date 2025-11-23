@@ -51,7 +51,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.role, isApprover]);
+  }, [isApprover]);
 
   useEffect(() => {
     loadRequests();

@@ -21,7 +21,7 @@ const UpdateRequest = () => {
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const response = await RequestAPI.get(id);
+        const response = await RequestAPI.detail(id);
         const request = response.data;
         setForm({
           title: request.title,
@@ -35,6 +35,7 @@ const UpdateRequest = () => {
           proforma: null, // Can't pre-fill file input
         });
       } catch (err) {
+        console.error("Fetch request error:", err);
         setError("Failed to load request");
       } finally {
         setLoading(false);

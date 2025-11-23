@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import { AuthAPI } from "../services/api";
 
 const AuthContext = createContext(null);
@@ -28,7 +35,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = async ({ username, password }) => {
+  const login = useCallback(async ({ username, password }) => {
     setError(null);
     try {
       const { data } = await AuthAPI.login({ username, password });
@@ -39,13 +46,13 @@ export const AuthProvider = ({ children }) => {
       setError(err.response?.data?.detail || "Unable to login");
       throw err;
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("p2p_access_token");
     localStorage.removeItem("p2p_refresh_token");
     setUser(null);
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
