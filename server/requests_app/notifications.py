@@ -14,7 +14,7 @@ def send_approval_notification(request_obj, approver):
             'request': request_obj,
             'approver': approver,
         })
-        msg = EmailMultiAlternatives(subject, html_content, settings.DEFAULT_FROM_EMAIL, [request_obj.requester.email])
+        msg = EmailMultiAlternatives(subject, html_content, settings.DEFAULT_FROM_EMAIL, [request_obj.created_by.email])
         msg.attach_alternative(html_content, "text/html")
         msg.send()
         logger.info(f"Approval email sent for request {request_obj.id}")
@@ -29,12 +29,40 @@ def send_rejection_notification(request_obj, rejector):
             'request': request_obj,
             'rejector': rejector,
         })
-        msg = EmailMultiAlternatives(subject, html_content, settings.DEFAULT_FROM_EMAIL, [request_obj.requester.email])
+        msg = EmailMultiAlternatives(subject, html_content, settings.DEFAULT_FROM_EMAIL, [request_obj.created_by.email])
         msg.attach_alternative(html_content, "text/html")
         msg.send()
         logger.info(f"Rejection email sent for request {request_obj.id}")
     except Exception as e:
         logger.error(f"Failed to send rejection email: {e}")
+
+def send_approval_request_notification(request_obj):
+    """Send approval request notification to the next approver(s)."""
+    from home.models import User
+    next_role = request_obj.next_required_role
+    if not next_role:
+        logger.warning(f"No next role for request {request_obj.id}")
+        return
+    approvers = User.objects.filter(role=next_role)
+    if not approvers.exists():
+        logger.warning(f"No approvers found for role {next_role}")
+        return
+    try:
+        subject = f'New Approval Request: {request_obj.title}'
+        html_content = render_to_string('requests/approval_notification.html', {
+            'request': request_obj,
+            'approver': None,  # No specific approver yet
+        })
+        emails = [approver.email for approver in approvers if approver.email]
+        if not emails:
+            logger.warning(f"No emails found for approvers of role {next_role}")
+            return
+        msg = EmailMultiAlternatives(subject, html_content, settings.DEFAULT_FROM_EMAIL, emails)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+        logger.info(f"Approval request email sent to {len(emails)} approvers for request {request_obj.id}")
+    except Exception as e:
+        logger.error(f"Failed to send approval request email: {e}")
 
 def send_receipt_submitted_notification(request_obj, user):
     """Send notification when receipt is submitted."""

@@ -85,18 +85,19 @@ const buildFormData = (payload) => {
 
 export const RequestAPI = {
   list: (params = {}) =>
-    api.get("requests/", {
+    api.get("v1/requests/", {
       params: { page_size: 50, ...params },
     }),
-  detail: (id) => api.get(`requests/${id}/`),
-  create: (payload) => api.post("requests/", buildFormData(payload)),
-  update: (id, payload) => api.put(`requests/${id}/`, buildFormData(payload)),
-  approve: (id, data) => api.patch(`requests/${id}/approve/`, data),
-  reject: (id, data) => api.patch(`requests/${id}/reject/`, data),
+  detail: (id) => api.get(`v1/requests/${id}/`),
+  create: (payload) => api.post("v1/requests/", buildFormData(payload)),
+  update: (id, payload) =>
+    api.put(`v1/requests/${id}/`, buildFormData(payload)),
+  approve: (id, data) => api.patch(`v1/requests/${id}/approve/`, data),
+  reject: (id, data) => api.patch(`v1/requests/${id}/reject/`, data),
   submitReceipt: (id, file, onProgress) => {
     const formData = new FormData();
     formData.append("receipt", file);
-    return api.post(`requests/${id}/submit-receipt/`, formData, {
+    return api.post(`v1/requests/${id}/submit-receipt/`, formData, {
       onUploadProgress: onProgress,
     });
   },

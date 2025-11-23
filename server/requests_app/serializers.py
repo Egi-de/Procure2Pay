@@ -7,7 +7,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import ApprovalStep, PurchaseRequest, ReceiptValidationResult, RequestItem
+from .models import ApprovalStep, PurchaseRequest, ReceiptValidationResult, RequestItem, Notification
 from .services.document_processing import (
     extract_proforma_metadata,
     generate_purchase_order,
@@ -251,3 +251,13 @@ class PurchaseRequestDetailSerializer(PurchaseRequestSerializer):
                 "validated_at": obj.validation_result.validated_at,
             }
         return None
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    related_request = PurchaseRequestSerializer(read_only=True)
+
+    class Meta:
+        model = Notification
+        fields = ["id", "user", "message", "timestamp", "is_read", "related_request"]
+        read_only_fields = ["id", "user", "timestamp", "related_request"]

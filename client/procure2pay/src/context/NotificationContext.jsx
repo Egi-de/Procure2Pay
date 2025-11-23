@@ -32,11 +32,9 @@ export const NotificationProvider = ({ children }) => {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      // Assuming an API endpoint for notifications; adjust as needed
-      // For now, simulate or use existing API; in real, add /api/notifications/
-      const response = await RequestAPI.list({ only_notifications: true }); // Placeholder
-      setNotifications(response.data.results || []);
-      if (response.data.new_notifications) {
+      const response = await NotificationAPI.list();
+      setNotifications(response.data);
+      if (response.data.length > 0) {
         setToastMessage("New notifications available!");
         setToastType("info");
         setShowToast(true);

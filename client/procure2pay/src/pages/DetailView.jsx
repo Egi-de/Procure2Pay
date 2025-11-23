@@ -66,6 +66,11 @@ const DetailView = () => {
     return null;
   }
 
+  const WORKFLOW_ROLES = ["APPROVER_L1", "APPROVER_L2"];
+  const nextRequiredRole = request.current_approval_level
+    ? WORKFLOW_ROLES[request.current_approval_level - 1]
+    : null;
+
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-4">
@@ -157,22 +162,24 @@ const DetailView = () => {
         <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-slate-900">Approval history</h2>
-            {isApprover && request.status === "PENDING" && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleDecision("approve")}
-                  className="px-3 py-1 rounded-md bg-emerald-100 text-emerald-700"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleDecision("reject")}
-                  className="px-3 py-1 rounded-md bg-rose-100 text-rose-700"
-                >
-                  Reject
-                </button>
-              </div>
-            )}
+            {isApprover &&
+              request.status === "PENDING" &&
+              user?.role === nextRequiredRole && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleDecision("approve")}
+                    className="px-3 py-1 rounded-md bg-emerald-100 text-emerald-700"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleDecision("reject")}
+                    className="px-3 py-1 rounded-md bg-rose-100 text-rose-700"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
           </div>
           <div className="space-y-2">
             {request.approvals.map((step) => (

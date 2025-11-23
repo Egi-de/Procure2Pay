@@ -10,10 +10,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
-from .models import PurchaseRequest
+from .models import Notification, PurchaseRequest
 from .permissions import IsApprover, IsStaff
 from .serializers import (
     ApprovalActionSerializer,
+    NotificationSerializer,
     PurchaseRequestDetailSerializer,
     PurchaseRequestSerializer,
     PurchaseRequestWriteSerializer,
@@ -46,6 +47,8 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter.upper())
+        if 'only_notifications' in self.request.query_params:
+            return PurchaseRequest.objects.none()  # Return empty for notifications param
         if user.role == User.Roles.STAFF:
             return qs.filter(created_by=user)
         if user.role in (User.Roles.APPROVER_L1, User.Roles.APPROVER_L2):
@@ -62,7 +65,14 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         return PurchaseRequestSerializer
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        request_obj = serializer.save(created_by=self.request.user)
+        # Create in-app notification for the creator
+        Notification.objects.create(
+            user=self.request.user,
+            message=f"Purchase request '{request_obj.title}' created successfully.",
+            related_request=request_obj
+        )
+        # Optionally create for first approver, but for now, for creator to test
 
     def perform_update(self, serializer):
         instance = serializer.instance
@@ -79,6 +89,7 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
             raise ValidationError("Request already finalized.")
         expected_role = purchase_request.next_required_role
         if request.user.role != expected_role:
+            logger.info(f"Permission denied for approve: user {request.user.username} role '{request.user.role}' != expected '{expected_role}' for request {pk}")
             raise PermissionDenied("You are not the expected approver for this level.")
         serializer = ApprovalActionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -139,6 +150,13 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
             from .notifications import send_receipt_submitted_notification
             send_receipt_submitted_notification(purchase_request, request.user)
 
+            # Create in-app notification for the submitter
+            Notification.objects.create(
+                user=request.user,
+                message=f"Receipt submitted for request '{purchase_request.title}'.",
+                related_request=purchase_request
+            )
+
             output = PurchaseRequestDetailSerializer(
                 purchase_request, context=self.get_serializer_context()
             )
@@ -147,3 +165,16 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Error submitting receipt for request {pk}: {e}")
             raise
+
+
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.select_related('user', 'related_request').filter(user=self.request.user).order_by('-timestamp')
+
+    @action(detail=False, methods=['patch'])
+    def mark_all_read(self, request):
+        self.get_queryset().update(is_read=True)
+        return Response({'status': 'all marked as read'})

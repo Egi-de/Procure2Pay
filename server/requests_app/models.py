@@ -90,36 +90,14 @@ class PurchaseRequest(models.Model):
             self.current_approval_level += 1
         self.save(update_fields=["current_approval_level", "status", "approved_by", "updated_at"])
         
-        # Send email notification (FIXED VERSION)
-        if self.created_by.email:
-            from django.core.mail import send_mail
-            
-            subject = f"Purchase Request Approved - {self.title}"
-            message = f"""
-Dear {self.created_by.username},
+        # Send dynamic email notifications
+        from .notifications import send_approval_notification, send_approval_request_notification
+        send_approval_notification(self, approver)
+        
+        # If not fully approved, notify next approver
+        if self.status == self.Status.PENDING:
+            send_approval_request_notification(self)
 
-Your purchase request "{self.title}" has been approved by {approver.username}.
-
-Status: {self.status}
-Current Level: {self.current_approval_level}/{self.required_approval_levels}
-
-Thank you,
-Procure2Pay System
-            """
-            
-            try:
-                send_mail(
-                    subject,
-                    message,
-                    None,  # Use DEFAULT_FROM_EMAIL from settings
-                    [self.created_by.email],
-                    fail_silently=False,
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to send approval email: {e}")
-            
     @transaction.atomic
     def mark_rejected(self, approver, reason: str = "") -> None:
         if self.is_terminal:
@@ -138,37 +116,9 @@ Procure2Pay System
         self.approved_by = approver
         self.save(update_fields=["status", "approved_by", "updated_at"])
         
-        # Send email notification (FIXED VERSION)
-        if self.created_by.email:
-            from django.core.mail import send_mail
-            
-            subject = f"Purchase Request Rejected - {self.title}"
-            message = f"""
-Dear {self.created_by.username},
-
-Your purchase request "{self.title}" has been rejected by {approver.username}.
-
-Reason: {reason or "No reason provided"}
-Status: {self.status}
-
-You may update and resubmit the request if needed.
-
-Thank you,
-Procure2Pay System
-            """
-            
-            try:
-                send_mail(
-                    subject,
-                    message,
-                    None,
-                    [self.created_by.email],
-                    fail_silently=False,
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to send rejection email: {e}")
+        # Send dynamic email notification
+        from .notifications import send_rejection_notification
+        send_rejection_notification(self, approver, reason)
 
 
 class RequestItem(models.Model):
@@ -233,3 +183,21 @@ class ReceiptValidationResult(models.Model):
 
     def __str__(self):
         return f"{self.request_id} validation: {'valid' if self.is_valid else 'invalid'}"
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="notifications", on_delete=models.CASCADE
+    )
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    related_request = models.ForeignKey(
+        PurchaseRequest, related_name="notifications", on_delete=models.CASCADE, null=True, blank=True
+    )
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"Notification for {self.user.username}: {self.message[:50]}"
