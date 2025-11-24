@@ -155,13 +155,15 @@ class PurchaseRequestWorkflowTests(TestCase):
         for level in range(1, req.required_approval_levels + 1):
             ApprovalStep.objects.get_or_create(request=req, level=level)
 
-        # Approve request
+        # Approve request (L1)
         req.mark_approved(self.approver_l1, {"comment": "Approved"})
         req.refresh_from_db()
 
-        # Check that email was sent to staff
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn(self.staff.email, mail.outbox[0].to)
+        # Check that approval email sent to staff and approval request to L2
+        self.assertEqual(len(mail.outbox), 2)
+        emails_to_staff = [email for email in mail.outbox if self.staff.email in email.to]
+        self.assertEqual(len(emails_to_staff), 1)
+        self.assertIn("Approved", emails_to_staff[0].subject)
 
     def test_rejection_notifications(self):
         req = PurchaseRequest.objects.create(
@@ -257,17 +259,21 @@ class PurchaseRequestWorkflowTests(TestCase):
         for level in range(1, req.required_approval_levels + 1):
             ApprovalStep.objects.get_or_create(request=req, level=level)
 
-        # Approve L1
+        # Approve L1 (sends approval to staff, request to L2)
         req.mark_approved(self.approver_l1, {"comment": "Approved L1"})
         req.refresh_from_db()
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Approved", mail.outbox[0].subject)
+        self.assertEqual(len(mail.outbox), 2)
+        emails_to_staff = [email for email in mail.outbox if self.staff.email in email.to]
+        self.assertEqual(len(emails_to_staff), 1)
+        self.assertIn("Approved", emails_to_staff[0].subject)
 
-        # Approve L2
+        # Approve L2 (sends approval to staff)
         req.mark_approved(self.approver_l2, {"comment": "Approved L2"})
         req.refresh_from_db()
-        self.assertEqual(len(mail.outbox), 2)
-        self.assertIn("Approved", mail.outbox[1].subject)
+        self.assertEqual(len(mail.outbox), 3)
+        emails_to_staff_after_l2 = [email for email in mail.outbox if self.staff.email in email.to]
+        self.assertEqual(len(emails_to_staff_after_l2), 2)
+        self.assertIn("Approved", emails_to_staff_after_l2[1].subject)
 
     def test_email_failure_logging(self):
         req = PurchaseRequest.objects.create(
@@ -313,8 +319,11 @@ class PurchaseRequestWorkflowTests(TestCase):
             ApprovalStep.objects.get_or_create(request=req, level=level)
 
         req.mark_approved(self.approver_l1, {"comment": "Approved"})
-        # No email sent
-        self.assertEqual(len(mail.outbox), 0)
+        # Approval email not sent to staff (no email), but approval request sent to L2
+        self.assertEqual(len(mail.outbox), 1)
+        # Ensure no email to staff
+        emails_to_staff = [email for email in mail.outbox if staff_no_email.email in email.to]
+        self.assertEqual(len(emails_to_staff), 0)
 
 
 class ConcurrentApprovalTests(TransactionTestCase):
@@ -730,7 +739,7 @@ class ViewTests(APITestCase):
 
     def test_list_requests_staff(self):
         self.client.force_authenticate(user=self.staff)
-        response = self.client.get('/api/v1/requests_app/')
+        response = self.client.get('/api/v1/requests/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create_request(self):
@@ -743,13 +752,13 @@ class ViewTests(APITestCase):
                 {"description": "New Item", "quantity": 1, "unit_price": "2000.00"}
             ],
         }
-        response = self.client.post('/api/v1/requests_app/', data, format='json')
+        response = self.client.post('/api/v1/requests/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_approve_request_l1_only(self):
         self.client.force_authenticate(user=self.approver_l1)
         response = self.client.patch(
-            f'/api/v1/requests_app/{self.req.pk}/approve/',
+            f'/api/v1/requests/{self.req.pk}/approve/',
             {'comment': 'Approved L1'},
             format='json'
         )
@@ -766,7 +775,7 @@ class ViewTests(APITestCase):
         # Now L2 can approve
         self.client.force_authenticate(user=self.approver_l2)
         response = self.client.patch(
-            f'/api/v1/requests_app/{self.req.pk}/approve/',
+            f'/api/v1/requests/{self.req.pk}/approve/',
             {'comment': 'Approved L2'},
             format='json'
         )
@@ -777,7 +786,7 @@ class ViewTests(APITestCase):
     def test_permission_denied_non_approver(self):
         self.client.force_authenticate(user=self.staff)
         response = self.client.patch(
-            f'/api/v1/requests_app/{self.req.pk}/approve/',
+            f'/api/v1/requests/{self.req.pk}/approve/',
             {'comment': 'Try approve'},
             format='json'
         )
@@ -787,7 +796,7 @@ class ViewTests(APITestCase):
         # L2 trying to approve at L1
         self.client.force_authenticate(user=self.approver_l2)
         response = self.client.patch(
-            f'/api/v1/requests_app/{self.req.pk}/approve/',
+            f'/api/v1/requests/{self.req.pk}/approve/',
             {'comment': 'Wrong level'},
             format='json'
         )
@@ -796,7 +805,7 @@ class ViewTests(APITestCase):
     def test_reject_request_any_level(self):
         self.client.force_authenticate(user=self.approver_l1)
         response = self.client.patch(
-            f'/api/v1/requests_app/{self.req.pk}/reject/',
+            f'/api/v1/requests/{self.req.pk}/reject/',
             {'reason': 'Rejected'},
             format='json'
         )
@@ -805,7 +814,7 @@ class ViewTests(APITestCase):
         self.assertEqual(self.req.status, PurchaseRequest.Status.REJECTED)
 
     def test_unauthenticated_access(self):
-        response = self.client.get('/api/v1/requests_app/')
+        response = self.client.get('/api/v1/requests/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_finance_can_access_approved_requests(self):
@@ -815,7 +824,7 @@ class ViewTests(APITestCase):
         self.req.refresh_from_db()
 
         self.client.force_authenticate(user=self.finance)
-        response = self.client.get(f'/api/v1/requests_app/{self.req.pk}/')
+        response = self.client.get(f'/api/v1/requests/{self.req.pk}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_receipt_submission(self):
@@ -831,7 +840,7 @@ class ViewTests(APITestCase):
         receipt_file = ContentFile(b"Receipt data", name="receipt.pdf")
         data = {'receipt': receipt_file}
         response = self.client.post(
-            f'/api/v1/requests_app/{self.req.pk}/submit-receipt/',
+            f'/api/v1/requests/{self.req.pk}/submit-receipt/',
             data,
             format='multipart'
         )
@@ -842,7 +851,7 @@ class ViewTests(APITestCase):
         receipt_file = ContentFile(b"Receipt data", name="receipt.pdf")
         data = {'receipt': receipt_file}
         response = self.client.post(
-            f'/api/v1/requests_app/{self.req.pk}/submit-receipt/',
+            f'/api/v1/requests/{self.req.pk}/submit-receipt/',
             data,
             format='multipart'
         )

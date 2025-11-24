@@ -8,11 +8,10 @@
     <p>Dear {{ request.created_by.username }},</p>
     <p>
       Your purchase request "<strong>{{ request.title }}</strong>" has been
-      rejected by {{ approver.username }}.
+      rejected by {{ rejector.username }}.
     </p>
-    <p>Reason: {{ reason|default:"No reason provided" }}</p>
+    <p>Reason: {{ reason }}</p>
     <p>Status: {{ request.status }}</p>
-    <p>You may update and resubmit the request if needed.</p>
     <p>Thank you,</p>
     <p>Procure2Pay System</p>
   </body>

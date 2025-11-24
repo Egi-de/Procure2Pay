@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 
 def send_approval_notification(request_obj, approver):
     """Send approval notification to the requester."""
+    if not request_obj.created_by.email:
+        logger.warning(f"No email for requester {request_obj.created_by.username}, skipping approval notification")
+        return
     try:
         subject = f'Purchase Request {request_obj.id} Approved'
         html_content = render_to_string('requests/approval_notification.html', {
@@ -21,13 +24,17 @@ def send_approval_notification(request_obj, approver):
     except Exception as e:
         logger.error(f"Failed to send approval email: {e}")
 
-def send_rejection_notification(request_obj, rejector):
+def send_rejection_notification(request_obj, rejector, reason: str = ""):
     """Send rejection notification to the requester."""
+    if not request_obj.created_by.email:
+        logger.warning(f"No email for requester {request_obj.created_by.username}, skipping rejection notification")
+        return
     try:
         subject = f'Purchase Request {request_obj.id} Rejected'
         html_content = render_to_string('requests/rejection_notification.html', {
             'request': request_obj,
             'rejector': rejector,
+            'reason': reason,
         })
         msg = EmailMultiAlternatives(subject, html_content, settings.DEFAULT_FROM_EMAIL, [request_obj.created_by.email])
         msg.attach_alternative(html_content, "text/html")
