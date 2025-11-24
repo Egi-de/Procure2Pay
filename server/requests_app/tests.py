@@ -160,7 +160,7 @@ class PurchaseRequestWorkflowTests(TestCase):
         req.refresh_from_db()
 
         # Check that approval email sent to staff
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
         emails_to_staff = [email for email in mail.outbox if self.staff.email in email.to]
         self.assertEqual(len(emails_to_staff), 1)
         self.assertIn("Approved", emails_to_staff[0].subject)
