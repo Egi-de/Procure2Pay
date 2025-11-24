@@ -24,11 +24,19 @@ def send_approval_notification(request_obj, approver):
     except Exception as e:
         logger.error(f"Failed to send approval email: {e}")
 
-def send_rejection_notification(request_obj, rejector, reason):
+def send_rejection_notification(request_obj, rejector):
     """Send rejection notification to the requester."""
     if not request_obj.created_by.email:
         logger.warning(f"No email for requester {request_obj.created_by.username}, skipping rejection notification")
         return
+    # Get the approval step for the rejection to fetch reason
+    from .models import ApprovalStep
+    approval_step = ApprovalStep.objects.filter(
+        request=request_obj,
+        level=request_obj.current_approval_level,
+        decision=ApprovalStep.Decision.REJECTED
+    ).first()
+    reason = approval_step.metadata.get('reason', '') if approval_step else ''
     try:
         subject = f'Purchase Request {request_obj.id} Rejected'
         html_content = render_to_string('requests/rejection_notification.html', {

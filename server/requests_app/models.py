@@ -118,7 +118,7 @@ class PurchaseRequest(models.Model):
         
         # Send dynamic email notification
         from .notifications import send_rejection_notification
-        send_rejection_notification(self, approver, reason)
+        send_rejection_notification(self, approver)
 
 
 class RequestItem(models.Model):
