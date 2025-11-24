@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from django.core.validators import FileExtensionValidator
 
 from .models import ApprovalStep, PurchaseRequest, ReceiptValidationResult, RequestItem, Notification
 from .services.document_processing import (
@@ -209,11 +210,11 @@ class ApprovalActionSerializer(serializers.Serializer):
 
 
 class ReceiptUploadSerializer(serializers.Serializer):
-    receipt = serializers.FileField()
+    receipt = serializers.FileField(validators=[
+        FileExtensionValidator(allowed_extensions=['pdf', 'png', 'jpg', 'jpeg']),
+    ])
 
     def validate_receipt(self, value):
-        if not value.name.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
-            raise serializers.ValidationError("Supported receipt formats: pdf, png, jpg.")
         # Sanitize filename
         import re
         value.name = re.sub(r'[^\w\.-]', '_', value.name)

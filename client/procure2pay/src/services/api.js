@@ -44,7 +44,8 @@ api.interceptors.response.use(
       } else if (status === 404) {
         error.userMessage = "Resource not found.";
       } else if (status === 403) {
-        error.userMessage = "You don't have permission to perform this action.";
+        error.userMessage =
+          data.detail || "You don't have permission to perform this action.";
       } else if (status === 400) {
         error.userMessage = data.detail || "Invalid request data.";
       } else {
@@ -101,6 +102,12 @@ export const RequestAPI = {
       onUploadProgress: onProgress,
     });
   },
+};
+
+export const NotificationAPI = {
+  list: () => api.get("v1/notifications/"),
+  markAllRead: () => api.patch("v1/notifications/mark_all_read/"),
+  markRead: (id) => api.patch(`v1/notifications/${id}/mark_read/`),
 };
 
 // Add error logging for API calls

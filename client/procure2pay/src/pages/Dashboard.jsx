@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { RequestAPI } from "../services/api.js";
 import Button from "../components/Button";
+import Pagination from "../components/Pagination";
 import { toast } from "react-toastify";
 
 const StatusBadge = ({ status }) => {
@@ -31,6 +32,8 @@ const Dashboard = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const isStaff = user?.role === "STAFF";
   const isApprover = user?.role?.startsWith("APPROVER");
@@ -41,19 +44,20 @@ const Dashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const params = {};
+      const params = { page: currentPage };
       if (isApprover) {
         params.status = "PENDING";
       }
       const { data } = await RequestAPI.list(params);
       setRequests(data.results ?? data);
+      setTotalPages(Math.ceil((data.count || 0) / 50));
     } catch (err) {
       setError(err.response?.data?.detail || "Unable to load requests");
       console.error("Load requests error:", err);
     } finally {
       setLoading(false);
     }
-  }, [isApprover]);
+  }, [isApprover, currentPage]);
 
   useEffect(() => {
     loadRequests();
@@ -151,128 +155,135 @@ const Dashboard = () => {
             {error}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
-              <thead className="bg-slate-50 dark:bg-slate-900/30 text-left text-xs font-semibold text-slate-500 dark:text-slate-300">
-                <tr>
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                {requests.map((request) => (
-                  <tr
-                    key={request.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        to={`/detail-view/${request.id}`}
-                        className="font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-300"
-                      >
-                        {request.title}
-                      </Link>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Level {request.current_approval_level}/
-                        {request.required_approval_levels}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
-                      ${Number(request.amount).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={request.status} />
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                      {new Date(request.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2 text-sm">
-                        {isApprover && request.status === "PENDING" ? (
-                          (() => {
-                            const nextRequiredRole =
-                              request.current_approval_level
-                                ? WORKFLOW_ROLES[
-                                    request.current_approval_level - 1
-                                  ]
-                                : null;
-                            if (user?.role === nextRequiredRole) {
-                              return (
-                                <>
-                                  <Button
-                                    onClick={() =>
-                                      handleDecision(request.id, "approve")
-                                    }
-                                    variant="success"
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    onClick={() => {
-                                      const reason = prompt(
-                                        "Reason for rejection?"
-                                      );
-                                      if (reason !== null) {
-                                        handleDecision(
-                                          request.id,
-                                          "reject",
-                                          reason
-                                        );
-                                      }
-                                    }}
-                                    variant="danger"
-                                  >
-                                    Reject
-                                  </Button>
-                                </>
-                              );
-                            } else {
-                              return (
-                                <Link
-                                  to={`/detail-view/${request.id}`}
-                                  className="px-3 py-1 rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                                >
-                                  View
-                                </Link>
-                              );
-                            }
-                          })()
-                        ) : (
-                          <Link
-                            to={`/detail-view/${request.id}`}
-                            className="px-3 py-1 rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                          >
-                            View
-                          </Link>
-                        )}
-                        {isStaff && request.status === "APPROVED" && (
-                          <Link
-                            to={`/receipt-upload/${request.id}`}
-                            className="px-3 py-1 rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-500/40 dark:text-blue-200 dark:hover:bg-blue-500/10"
-                          >
-                            Submit receipt
-                          </Link>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {!requests.length && (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-900/30 text-left text-xs font-semibold text-slate-500 dark:text-slate-300">
                   <tr>
-                    <td
-                      className="px-4 py-6 text-center text-slate-500 dark:text-slate-400"
-                      colSpan={5}
-                    >
-                      No requests yet.
-                    </td>
+                    <th className="px-4 py-3">Title</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                  {requests.map((request) => (
+                    <tr
+                      key={request.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <Link
+                          to={`/detail-view/${request.id}`}
+                          className="font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-300"
+                        >
+                          {request.title}
+                        </Link>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Level {request.current_approval_level}/
+                          {request.required_approval_levels}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                        ${Number(request.amount).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={request.status} />
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                        {new Date(request.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          {isApprover && request.status === "PENDING" ? (
+                            (() => {
+                              const nextRequiredRole =
+                                request.current_approval_level
+                                  ? WORKFLOW_ROLES[
+                                      request.current_approval_level - 1
+                                    ]
+                                  : null;
+                              if (user?.role === nextRequiredRole) {
+                                return (
+                                  <>
+                                    <Button
+                                      onClick={() =>
+                                        handleDecision(request.id, "approve")
+                                      }
+                                      variant="success"
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      onClick={() => {
+                                        const reason = prompt(
+                                          "Reason for rejection?"
+                                        );
+                                        if (reason !== null) {
+                                          handleDecision(
+                                            request.id,
+                                            "reject",
+                                            reason
+                                          );
+                                        }
+                                      }}
+                                      variant="danger"
+                                    >
+                                      Reject
+                                    </Button>
+                                  </>
+                                );
+                              } else {
+                                return (
+                                  <Link
+                                    to={`/detail-view/${request.id}`}
+                                    className="px-3 py-1 rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                                  >
+                                    View
+                                  </Link>
+                                );
+                              }
+                            })()
+                          ) : (
+                            <Link
+                              to={`/detail-view/${request.id}`}
+                              className="px-3 py-1 rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                            >
+                              View
+                            </Link>
+                          )}
+                          {isStaff && request.status === "APPROVED" && (
+                            <Link
+                              to={`/receipt-upload/${request.id}`}
+                              className="px-3 py-1 rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-500/40 dark:text-blue-200 dark:hover:bg-blue-500/10"
+                            >
+                              Submit receipt
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!requests.length && (
+                    <tr>
+                      <td
+                        className="px-4 py-6 text-center text-slate-500 dark:text-slate-400"
+                        colSpan={5}
+                      >
+                        No requests yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </>
         )}
       </div>
     </section>

@@ -10,6 +10,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
+from .throttles import ApprovalThrottle
+
 from .models import Notification, PurchaseRequest
 from .permissions import IsApprover, IsStaff
 from .serializers import (
@@ -90,7 +92,12 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         expected_role = purchase_request.next_required_role
         if request.user.role != expected_role:
             logger.info(f"Permission denied for approve: user {request.user.username} role '{request.user.role}' != expected '{expected_role}' for request {pk}")
-            raise PermissionDenied("You are not the expected approver for this level.")
+            if request.user.role == "APPROVER_L2" and expected_role == "APPROVER_L1":
+                raise PermissionDenied("Please wait for Approver L1 to approve or deny this request first.")
+            elif request.user.role == "APPROVER_L1" and expected_role == "APPROVER_L2":
+                raise PermissionDenied("This request has been approved by Approver L1 and now requires approval from Approver L2.")
+            else:
+                raise PermissionDenied("You are not the expected approver for this level.")
         serializer = ApprovalActionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
@@ -102,7 +109,7 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         )
         return Response(output.data)
 
-    @action(detail=True, methods=["patch"], permission_classes=[permissions.IsAuthenticated, IsApprover])
+    @action(detail=True, methods=["patch"], permission_classes=[permissions.IsAuthenticated, IsApprover], throttle_classes=[ApprovalThrottle])
     def reject(self, request, pk=None):
         try:
             purchase_request = self.get_object()
@@ -110,7 +117,13 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                 raise ValidationError("Request already finalized.")
             expected_role = purchase_request.next_required_role
             if request.user.role != expected_role:
-                raise PermissionDenied("You are not the expected approver for this level.")
+                logger.info(f"Permission denied for reject: user {request.user.username} role '{request.user.role}' != expected '{expected_role}' for request {pk}")
+                if request.user.role == "APPROVER_L2" and expected_role == "APPROVER_L1":
+                    raise PermissionDenied("Please wait for Approver L1 to approve or deny this request first.")
+                elif request.user.role == "APPROVER_L1" and expected_role == "APPROVER_L2":
+                    raise PermissionDenied("This request has been approved by Approver L1 and now requires action from Approver L2.")
+                else:
+                    raise PermissionDenied("You are not the expected approver for this level.")
             serializer = ApprovalActionSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             with transaction.atomic():
