@@ -130,7 +130,7 @@ const UpdateRequest = () => {
           unit_price: Number(item.unit_price),
         })),
       });
-      navigate(`/requests/${id}`);
+      navigate(`/detail-view/${id}`);
     } catch {
       setError("Unable to update request");
     } finally {

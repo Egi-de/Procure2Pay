@@ -19,7 +19,7 @@ const ReceiptUpload = () => {
     setError(null);
     try {
       await RequestAPI.submitReceipt(id, file);
-      navigate(`/requests/${id}`);
+      navigate(`/detail-view/${id}`);
     } catch (err) {
       setError(err.response?.data?.detail || "Unable to upload receipt");
     } finally {
