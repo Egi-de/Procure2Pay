@@ -159,8 +159,8 @@ class PurchaseRequestWorkflowTests(TestCase):
         req.mark_approved(self.approver_l1, {"comment": "Approved"})
         req.refresh_from_db()
 
-        # Check that approval email sent to staff and approval request to L2
-        self.assertEqual(len(mail.outbox), 2)
+        # Check that approval email sent to staff
+        self.assertEqual(len(mail.outbox), 1)
         emails_to_staff = [email for email in mail.outbox if self.staff.email in email.to]
         self.assertEqual(len(emails_to_staff), 1)
         self.assertIn("Approved", emails_to_staff[0].subject)
@@ -319,8 +319,8 @@ class PurchaseRequestWorkflowTests(TestCase):
             ApprovalStep.objects.get_or_create(request=req, level=level)
 
         req.mark_approved(self.approver_l1, {"comment": "Approved"})
-        # Approval email not sent to staff (no email), but approval request sent to L2
-        self.assertEqual(len(mail.outbox), 1)
+        # Approval email not sent to staff (no email)
+        self.assertEqual(len(mail.outbox), 0)
         # Ensure no email to staff
         emails_to_staff = [email for email in mail.outbox if staff_no_email.email in email.to]
         self.assertEqual(len(emails_to_staff), 0)

@@ -24,7 +24,7 @@ def send_approval_notification(request_obj, approver):
     except Exception as e:
         logger.error(f"Failed to send approval email: {e}")
 
-def send_rejection_notification(request_obj, rejector, reason: str = ""):
+def send_rejection_notification(request_obj, rejector, reason):
     """Send rejection notification to the requester."""
     if not request_obj.created_by.email:
         logger.warning(f"No email for requester {request_obj.created_by.username}, skipping rejection notification")
