@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { RequestAPI } from "../services/api"; // Assuming notifications come via API, or extend for notifications
+import { RequestAPI, NotificationAPI } from "../services/api"; // Assuming notifications come via API, or extend for notifications
 import { useAuth } from "./AuthContext";
 import Toast from "../components/Toast";
 
