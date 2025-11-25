@@ -2,10 +2,10 @@ FROM node:18 AS frontend-build
 
 WORKDIR /app/client/procure2pay
 
-COPY client/procure2pay/package*.json ./
+COPY ./client/procure2pay/package*.json ./
 RUN npm ci
 
-COPY client/procure2pay/ ./
+COPY ./client/procure2pay/ ./
 RUN npm run build
 
 FROM python:3.11-slim AS base
@@ -20,11 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY ./server/requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy server source
-COPY server/ /app/server/
+COPY ./server/ /app/server/
 
 # Create directories if needed
 RUN mkdir -p /app/server/home/templates /app/server/static/assets /app/logs

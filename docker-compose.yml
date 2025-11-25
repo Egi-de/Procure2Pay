@@ -13,7 +13,8 @@ services:
 
   backend:
     build:
-      context: ./server
+      context: .
+      dockerfile: ./server/Dockerfile
     restart: unless-stopped
     depends_on:
       - db
@@ -29,8 +30,8 @@ services:
       ALLOWED_HOSTS: "*"
       CORS_ALLOWED_ORIGINS: "http://localhost:4173"
     volumes:
-      - ./server/media:/app/media
-      - ./server/staticfiles:/app/staticfiles
+      - ./server/media:/app/server/media
+      - ./server/staticfiles:/app/server/staticfiles
     ports:
       - "8000:8000"
 
