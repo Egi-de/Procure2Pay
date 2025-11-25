@@ -8,6 +8,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -18,6 +20,11 @@ RUN adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app
 
 COPY . .
+
+# Build frontend
+RUN cd client/procure2pay && npm ci
+RUN cd client/procure2pay && npm run build
+RUN mkdir -p frontend && cp -r client/procure2pay/dist/* frontend/ || true
 
 RUN mkdir -p logs
 

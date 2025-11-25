@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 
 from requests_app.serializers import UserSerializer
 
+from django.views.generic import TemplateView
+
 User = get_user_model()
 
 
@@ -14,6 +16,7 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
-from django.shortcuts import render
 
-# Create your views here.
+
+class SPAView(TemplateView):
+    template_name = 'index.html'
