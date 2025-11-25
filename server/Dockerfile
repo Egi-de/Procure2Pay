@@ -27,7 +27,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY ./server/ /app/server/
 
 # Create directories if needed
-RUN mkdir -p /app/server/home/templates /app/server/static/assets /app/logs
+RUN mkdir -p /app/server/home/templates /app/server/static /app/logs
 
 # Copy built frontend
 COPY --from=frontend-build /app/client/procure2pay/dist/index.html /app/server/home/templates/index.html
@@ -39,7 +39,7 @@ RUN adduser --disabled-password --gecos '' appuser && \
 
 WORKDIR /app/server
 
-RUN python manage.py collectstatic --noinput || true
+RUN python manage.py collectstatic --noinput
 
 USER appuser
 
