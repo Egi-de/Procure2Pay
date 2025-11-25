@@ -102,7 +102,8 @@ jobs:
     needs: docker-build
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Deploy to production
+      - name: Deploy to Render
         run: |
-          echo "Deploying to production environment"
-          # Add deployment commands here, e.g., trigger webhook or use deploy tool
+          echo "Deploying to Render production environment..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          echo " Deployment triggered successfully!"
