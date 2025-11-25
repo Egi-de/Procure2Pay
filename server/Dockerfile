@@ -8,8 +8,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
-    nodejs \
-    npm \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -21,11 +19,6 @@ RUN adduser --disabled-password --gecos '' appuser && \
 
 COPY . .
 
-# Build frontend
-RUN cd client/procure2pay && npm ci
-RUN cd client/procure2pay && npm run build
-RUN mkdir -p frontend && cp -r client/procure2pay/dist/* frontend/ || true
-
 RUN mkdir -p logs
 
 RUN python manage.py collectstatic --noinput || true
@@ -33,4 +26,3 @@ RUN python manage.py collectstatic --noinput || true
 USER appuser
 
 CMD ["gunicorn", "procure2pay.wsgi:application", "--bind", "0.0.0.0:8000"]
-
