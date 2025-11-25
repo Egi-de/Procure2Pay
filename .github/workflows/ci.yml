@@ -82,8 +82,8 @@ jobs:
         run: |
           export COMPOSE_PROJECT_NAME=procure2pay
           docker compose build
-          docker tag procure2pay_backend ${{ secrets.DOCKER_USERNAME }}/procure2pay-backend:latest
-          docker tag procure2pay_frontend ${{ secrets.DOCKER_USERNAME }}/procure2pay-frontend:latest
+          docker tag procure2pay-backend ${{ secrets.DOCKER_USERNAME }}/procure2pay-backend:latest
+          docker tag procure2pay-frontend ${{ secrets.DOCKER_USERNAME }}/procure2pay-frontend:latest
           docker push ${{ secrets.DOCKER_USERNAME }}/procure2pay-backend:latest
           docker push ${{ secrets.DOCKER_USERNAME }}/procure2pay-frontend:latest
 

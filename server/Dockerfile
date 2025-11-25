@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS base
+FROM python:3.11-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -18,6 +18,8 @@ RUN adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app
 
 COPY . .
+
+RUN mkdir -p logs
 
 RUN python manage.py collectstatic --noinput || true
 
