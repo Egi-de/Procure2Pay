@@ -1,7 +1,22 @@
 import axios from "axios";
 
-const API_HOST = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-const API_BASE_URL = `${API_HOST.replace(/\/$/, "")}/api/`;
+// In production, use relative URL (same origin). In development, use localhost.
+const getApiBaseUrl = () => {
+  // If VITE_API_BASE_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return `${import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "")}/api/`;
+  }
+
+  // In production (when served from the same domain), use relative URL
+  if (import.meta.env.PROD) {
+    return "/api/";
+  }
+
+  // In development, default to localhost
+  return "http://localhost:8000/api/";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
