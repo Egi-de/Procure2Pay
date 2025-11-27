@@ -43,4 +43,5 @@ RUN python manage.py collectstatic --noinput || true
 
 USER appuser
 
-CMD ["gunicorn", "procure2pay.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Run migrations and then start gunicorn
+CMD python manage.py migrate --noinput && gunicorn procure2pay.wsgi:application --bind 0.0.0.0:8000
