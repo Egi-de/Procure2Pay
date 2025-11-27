@@ -123,6 +123,8 @@ export const NotificationAPI = {
   list: () => api.get("v1/notifications/"),
   markAllRead: () => api.patch("v1/notifications/mark_all_read/"),
   markRead: (id) => api.patch(`v1/notifications/${id}/mark_read/`),
+  getUnreadCount: () =>
+    api.get("v1/notifications/", { params: { is_read: false } }),
 };
 
 // Add error logging for API calls

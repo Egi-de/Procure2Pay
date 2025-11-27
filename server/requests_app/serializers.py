@@ -256,9 +256,20 @@ class PurchaseRequestDetailSerializer(PurchaseRequestSerializer):
 
 class NotificationSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    related_request = PurchaseRequestSerializer(read_only=True)
+    related_request_id = serializers.SerializerMethodField()
+    related_request_title = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
-        fields = ["id", "user", "message", "timestamp", "is_read", "related_request"]
-        read_only_fields = ["id", "user", "timestamp", "related_request"]
+        fields = ["id", "user", "message", "timestamp", "is_read", "related_request_id", "related_request_title"]
+        read_only_fields = ["id", "user", "timestamp", "related_request_id", "related_request_title"]
+
+    def get_related_request_id(self, obj):
+        if obj.related_request:
+            return str(obj.related_request.id)
+        return None
+
+    def get_related_request_title(self, obj):
+        if obj.related_request:
+            return obj.related_request.title
+        return None

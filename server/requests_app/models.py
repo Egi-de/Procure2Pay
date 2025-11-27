@@ -90,13 +90,10 @@ class PurchaseRequest(models.Model):
             self.current_approval_level += 1
         self.save(update_fields=["current_approval_level", "status", "approved_by", "updated_at"])
         
-        # Send dynamic email notifications
-        from .notifications import send_approval_notification, send_approval_request_notification
+        # Send notifications (email + in-app + WebSocket)
+        from .notifications import send_approval_notification, notify_request_approved
         send_approval_notification(self, approver)
-        
-        # If not fully approved, notify next approver
-        if self.status == self.Status.PENDING:
-            send_approval_request_notification(self)
+        notify_request_approved(self, approver)
 
     @transaction.atomic
     def mark_rejected(self, approver, reason: str = "") -> None:
@@ -116,9 +113,10 @@ class PurchaseRequest(models.Model):
         self.approved_by = approver
         self.save(update_fields=["status", "approved_by", "updated_at"])
         
-        # Send dynamic email notification
-        from .notifications import send_rejection_notification
+        # Send notifications (email + in-app + WebSocket)
+        from .notifications import send_rejection_notification, notify_request_rejected
         send_rejection_notification(self, approver)
+        notify_request_rejected(self, approver, reason)
 
 
 class RequestItem(models.Model):

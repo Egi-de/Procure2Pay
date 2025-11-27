@@ -44,19 +44,20 @@ CORS_ALLOW_CREDENTIALS = True
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
     'drf_yasg',
     'home',
     'requests_app',
- 
 ]
 
 MIDDLEWARE = [
@@ -89,6 +90,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'procure2pay.wsgi.application'
+ASGI_APPLICATION = 'procure2pay.asgi.application'
+
+# Channel layers configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+}
 
 
 # Database

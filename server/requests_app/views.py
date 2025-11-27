@@ -68,13 +68,19 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         request_obj = serializer.save(created_by=self.request.user)
+        
+        # Import notification functions
+        from .notifications import create_notification_for_user, notify_approvers_new_request
+        
         # Create in-app notification for the creator
-        Notification.objects.create(
-            user=self.request.user,
-            message=f"Purchase request '{request_obj.title}' created successfully.",
-            related_request=request_obj
+        create_notification_for_user(
+            self.request.user,
+            f"Purchase request '{request_obj.title}' created successfully.",
+            request_obj
         )
-        # Optionally create for first approver, but for now, for creator to test
+        
+        # Notify approvers about the new request
+        notify_approvers_new_request(request_obj)
 
     def perform_update(self, serializer):
         instance = serializer.instance
@@ -160,14 +166,14 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
             serializer.save()
 
             # Send notification to finance team
-            from .notifications import send_receipt_submitted_notification
+            from .notifications import send_receipt_submitted_notification, create_notification_for_user
             send_receipt_submitted_notification(purchase_request, request.user)
 
-            # Create in-app notification for the submitter
-            Notification.objects.create(
-                user=request.user,
-                message=f"Receipt submitted for request '{purchase_request.title}'.",
-                related_request=purchase_request
+            # Create in-app notification for the submitter (with WebSocket)
+            create_notification_for_user(
+                request.user,
+                f"Receipt submitted for request '{purchase_request.title}'.",
+                purchase_request
             )
 
             output = PurchaseRequestDetailSerializer(
@@ -187,7 +193,19 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return Notification.objects.select_related('user', 'related_request').filter(user=self.request.user).order_by('-timestamp')
 
+    @action(detail=True, methods=['patch'])
+    def mark_read(self, request, pk=None):
+        """Mark a single notification as read."""
+        try:
+            notification = self.get_object()
+            notification.is_read = True
+            notification.save(update_fields=['is_read'])
+            return Response({'status': 'marked as read'})
+        except Notification.DoesNotExist:
+            return Response({'error': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
+
     @action(detail=False, methods=['patch'])
     def mark_all_read(self, request):
-        self.get_queryset().update(is_read=True)
-        return Response({'status': 'all marked as read'})
+        """Mark all notifications as read."""
+        count = self.get_queryset().filter(is_read=False).update(is_read=True)
+        return Response({'status': 'all marked as read', 'count': count})
