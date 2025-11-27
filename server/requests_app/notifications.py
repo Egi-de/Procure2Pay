@@ -305,19 +305,20 @@ def notify_finance_request_approved_email(request_obj):
 
 
 def send_approval_status_email_to_all(request_obj, approver, status_text):
-    """Send approval status email to approvers and finance (excluding staff who gets a separate email)."""
+    """Send approval status email to the next level approvers (excluding staff who gets a separate email)."""
     from home.models import User
     
     # Collect all emails (excluding staff who already receives a dedicated approval email)
     all_emails = []
     
-    # All approvers (L1 and L2), excluding the one who made the action
-    approvers = User.objects.filter(role__in=[User.Roles.APPROVER_L1, User.Roles.APPROVER_L2]).exclude(id=approver.id)
-    all_emails.extend([u.email for u in approvers if u.email])
-    
-    # Finance users
-    finance_users = User.objects.filter(role=User.Roles.FINANCE)
-    all_emails.extend([u.email for u in finance_users if u.email])
+    # Only send to next level approvers if the request is not fully approved yet
+    # When fully approved, staff gets a dedicated email and finance gets notified separately
+    if request_obj.status != request_obj.Status.APPROVED:
+        # Get the next required role for approval
+        next_role = request_obj.next_required_role
+        if next_role:
+            next_approvers = User.objects.filter(role=next_role)
+            all_emails.extend([u.email for u in next_approvers if u.email])
     
     # Remove duplicates
     all_emails = list(set(all_emails))
