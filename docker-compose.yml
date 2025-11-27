@@ -32,7 +32,7 @@ services:
       ALLOWED_HOSTS: "*"
       CORS_ALLOWED_ORIGINS: "http://localhost:8000"
     volumes:
-      - ./server/media:/app/server/media
+      - media_data:/app/server/media
       - ./server/staticfiles:/app/server/staticfiles
     ports:
       - "8000:8000"
@@ -40,3 +40,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  media_data:

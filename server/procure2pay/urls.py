@@ -14,10 +14,15 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import mimetypes
+import os
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.http import FileResponse, Http404
+from django.urls import include, path, re_path
+from django.views.static import serve
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
@@ -34,6 +39,22 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=[permissions.AllowAny],
 )
+
+
+def serve_media(request, path):
+    """
+    Serve media files in production.
+    This view serves files from MEDIA_ROOT regardless of DEBUG setting.
+    """
+    file_path = os.path.join(settings.MEDIA_ROOT, path)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        content_type, _ = mimetypes.guess_type(file_path)
+        return FileResponse(
+            open(file_path, 'rb'),
+            content_type=content_type or 'application/octet-stream'
+        )
+    raise Http404("File not found")
+
 
 urlpatterns = [
     path('', include('home.urls')),
@@ -52,4 +73,10 @@ urlpatterns = [
         schema_view.with_ui("redoc", cache_timeout=0),
         name="schema-redoc",
     ),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Serve media files in both development and production
+    re_path(r'^media/(?P<path>.*)$', serve_media, name='serve_media'),
+]
+
+# In development, also use Django's static file serving
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

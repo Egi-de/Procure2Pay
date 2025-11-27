@@ -26,16 +26,18 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy server source
 COPY server/ /app/server/
 
-# Create directories if needed
-RUN mkdir -p /app/server/home/templates /app/server/static/assets /app/logs
+# Create directories if needed (including media directories for file uploads)
+RUN mkdir -p /app/server/home/templates /app/server/static/assets /app/logs \
+    /app/server/media/proformas /app/server/media/purchase_orders /app/server/media/receipts
 
 # Copy built frontend
 COPY --from=frontend-build /app/client/procure2pay/dist/index.html /app/server/home/templates/index.html
 COPY --from=frontend-build /app/client/procure2pay/dist/assets /app/server/static/assets
 
-# Create non-root user
+# Create non-root user and set permissions for media directory
 RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app/server/media
 
 WORKDIR /app/server
 
