@@ -305,15 +305,11 @@ def notify_finance_request_approved_email(request_obj):
 
 
 def send_approval_status_email_to_all(request_obj, approver, status_text):
-    """Send approval status email to ALL users (approvers, staff, finance)."""
+    """Send approval status email to approvers and finance (excluding staff who gets a separate email)."""
     from home.models import User
     
-    # Collect all emails
+    # Collect all emails (excluding staff who already receives a dedicated approval email)
     all_emails = []
-    
-    # Staff (request creator)
-    if request_obj.created_by.email:
-        all_emails.append(request_obj.created_by.email)
     
     # All approvers (L1 and L2), excluding the one who made the action
     approvers = User.objects.filter(role__in=[User.Roles.APPROVER_L1, User.Roles.APPROVER_L2]).exclude(id=approver.id)
